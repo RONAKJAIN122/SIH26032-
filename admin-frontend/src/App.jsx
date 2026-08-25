@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
+import Dashboard from "./Dashboard";
 import "./App.css";
 
+const API_BASE = "http://127.0.0.1:8000";
+
 function App() {
+  const [view, setView] = useState("overview"); // "overview" | "dashboard"
   const [healthStatus, setHealthStatus] = useState("Checking...");
   const [backendDetails, setBackendDetails] = useState(null);
   const [centers, setCenters] = useState([]);
@@ -14,45 +18,46 @@ function App() {
     setHealthStatus("Connecting...");
     setError(null);
     try {
-      const response = await fetch("http://127.0.0.1:8000/health");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const response = await fetch(`${API_BASE}/health`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       if (data.status === "online") {
         setHealthStatus("System Online");
         setIsOnline(true);
         setBackendDetails(data);
 
-        // Fetch Centers and Bookings
         const [centersRes, bookingsRes] = await Promise.all([
-          fetch("http://127.0.0.1:8000/centers"),
-          fetch("http://127.0.0.1:8000/bookings"),
+          fetch(`${API_BASE}/centers`),
+          fetch(`${API_BASE}/bookings`),
         ]);
-
-        if (centersRes.ok) {
-          const centersData = await centersRes.json();
-          setCenters(centersData);
-        }
-        if (bookingsRes.ok) {
-          const bookingsData = await bookingsRes.json();
-          setBookings(bookingsData);
-        }
+        if (centersRes.ok) setCenters(await centersRes.json());
+        if (bookingsRes.ok) setBookings(await bookingsRes.json());
       } else {
         setHealthStatus("Unexpected Response");
         setIsOnline(false);
       }
     } catch (err) {
-      console.error("Failed to connect to backend:", err);
       setHealthStatus("System Offline");
       setIsOnline(false);
-      setError("Unable to connect to FastAPI backend at http://127.0.0.1:8000. Ensure the server is running.");
+      setError("Unable to connect to FastAPI backend at http://127.0.0.1:8000.");
     }
   };
 
   useEffect(() => {
     fetchHealthAndData();
   }, []);
+
+  // Render the real-time dashboard in full view
+  if (view === "dashboard") {
+    return (
+      <div>
+        <button className="back-btn" onClick={() => setView("overview")}>
+          ← Back to Overview
+        </button>
+        <Dashboard />
+      </div>
+    );
+  }
 
   return (
     <div className="container">
@@ -71,19 +76,19 @@ function App() {
             <span className="db-badge">Database: {backendDetails.database}</span>
           )}
         </div>
-
-        <button className="refresh-btn" onClick={fetchHealthAndData}>
-          🔄 Refresh Live Data
-        </button>
+        <div className="header-actions">
+          <button className="refresh-btn" onClick={fetchHealthAndData}>
+            🔄 Refresh
+          </button>
+          <button className="dashboard-btn" onClick={() => setView("dashboard")}>
+            📊 Open Live Dashboard
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <div className="error-box">
-          <p>{error}</p>
-        </div>
-      )}
+      {error && <div className="error-box"><p>{error}</p></div>}
 
-      {/* Stats Counter Grid */}
+      {/* Stats Grid */}
       {backendDetails?.stats && (
         <div className="stats-grid">
           <div className="stat-card">
@@ -120,7 +125,7 @@ function App() {
         </button>
       </div>
 
-      {/* Tab Content: Centers */}
+      {/* Tab: Centers */}
       {activeTab === "overview" && (
         <section className="card list-section">
           <h2>Haryana & Punjab Procurement Mandis</h2>
@@ -142,7 +147,7 @@ function App() {
         </section>
       )}
 
-      {/* Tab Content: Live Queue */}
+      {/* Tab: Live Queue */}
       {activeTab === "queue" && (
         <section className="card list-section">
           <h2>Active Farmer Queue Tokens</h2>
@@ -175,6 +180,11 @@ function App() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="admin-cta">
+            <button className="dashboard-btn large" onClick={() => setView("dashboard")}>
+              📊 Open Real-Time Admin Dashboard →
+            </button>
           </div>
         </section>
       )}

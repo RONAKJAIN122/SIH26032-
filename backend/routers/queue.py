@@ -1,4 +1,5 @@
 import random
+import asyncio
 from datetime import date, datetime, timedelta, time
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -199,7 +200,7 @@ def book_procurement_slot(
 # 2. Dynamic Queue & Status Update (PATCH /api/bookings/{booking_id}/status)
 # -------------------------------------------------------------------
 @router.patch("/bookings/{booking_id}/status", response_model=schemas.StatusUpdateResponse)
-def update_booking_status(
+async def update_booking_status(
     booking_id: int,
     status_update: schemas.StatusUpdateRequest,
     db: Session = Depends(get_db)
@@ -259,6 +260,36 @@ def update_booking_status(
         active_b.estimated_arrival_time = current_time_cursor + timedelta(minutes=index * avg_processing_time)
 
     db.commit()
+
+    # -----------------------------------------------------------
+    # Broadcast live queue update to all WebSocket dashboard clients
+    # -----------------------------------------------------------
+    try:
+        from routers.ws import manager, build_queue_broadcast_payload
+        payload = build_queue_broadcast_payload(db, booking.center_id, booking.booking_date)
+        if payload:
+            asyncio.create_task(manager.broadcast(payload))
+    except Exception as ws_err:
+        print(f"[WS Broadcast] Non-critical error: {ws_err}")
+
+    # -----------------------------------------------------------
+    # Mock SMS/WhatsApp push notification on COMPLETED status
+    # (In production: fire real Twilio message to farmer)
+    # -----------------------------------------------------------
+    if new_status == models.BookingStatus.COMPLETED and booking.farmer:
+        farmer_name = booking.farmer.name
+        farmer_phone = booking.farmer.phone_number
+        msb_per_q = 2275.0
+        payout = round(booking.estimated_quantity_quintals * msb_per_q, 2)
+        sms_text = (
+            f"[SmartMandi] Namaste {farmer_name}! "
+            f"Your {booking.crop_type} ({booking.estimated_quantity_quintals} Q) has been weighed. "
+            f"Estimated payout: Rs {payout:,.2f} at MSP. "
+            f"Ref: {booking.booking_reference}"
+        )
+        # In production, replace with actual Twilio send:
+        # client.messages.create(body=sms_text, from_=TWILIO_NUMBER, to=f"+91{farmer_phone}")
+        print(f"[Mock SMS] To +91{farmer_phone}: {sms_text}")
 
     return schemas.StatusUpdateResponse(
         booking_id=booking.id,

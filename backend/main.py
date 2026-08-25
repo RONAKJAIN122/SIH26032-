@@ -8,6 +8,7 @@ import models
 import schemas
 from routers.queue import router as queue_router
 from routers.bot import router as bot_router
+from routers.ws import router as ws_router
 
 # Automatically create tables if they do not exist
 Base.metadata.create_all(bind=engine)
@@ -36,6 +37,7 @@ app.add_middleware(
 # Mount Routers
 app.include_router(queue_router)
 app.include_router(bot_router)
+app.include_router(ws_router)
 
 
 # --- Root & Health Endpoints ---
