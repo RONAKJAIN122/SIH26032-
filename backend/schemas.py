@@ -178,3 +178,25 @@ class PaymentResponse(PaymentBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# -------------------------------------------------------------
+# Farmer Portal Schemas
+# -------------------------------------------------------------
+class FarmerBookingDetail(BaseModel):
+    """Enriched booking record returned to the farmer portal."""
+    booking_id: int
+    booking_reference: str
+    center_id: int
+    center_name: str
+    center_district: str
+    queue_number: int
+    booking_date: str
+    crop_type: str
+    estimated_quantity_quintals: float
+    status: BookingStatus
+    estimated_arrival_time: Optional[str] = None
+    farmers_ahead: int
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)
