@@ -71,7 +71,7 @@ CROP_TYPES = ["Wheat (Kanak)", "Paddy (Basmati)", "Paddy (PR-126)", "Mustard (Sa
 
 
 def seed_database():
-    print("🌱 Initializing Database Tables...")
+    print("[Seed] Initializing Database Tables...")
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
@@ -79,10 +79,10 @@ def seed_database():
     try:
         # Check existing data to prevent duplicate seeds
         if db.query(Center).count() > 0:
-            print("⚠️  Database already contains records. Skipping seed.")
+            print("[Seed] Database already contains records. Skipping seed.")
             return
 
-        print("\n🏛️  Seeding 5 Realistic Mandi Procurement Centers...")
+        print("\n[Seed] Seeding 5 Realistic Mandi Procurement Centers...")
         created_centers = []
         for center_data in REALISTIC_CENTERS:
             center = Center(**center_data)
@@ -92,14 +92,13 @@ def seed_database():
 
         for c in created_centers:
             db.refresh(c)
-            print(f"  ✓ Added Mandi: {c.name} (Capacity: {c.daily_capacity_quintals} quintals)")
+            print(f"  + Added Mandi: {c.name} (Capacity: {c.daily_capacity_quintals} quintals)")
 
-        print("\n👨‍🌾 Seeding 50 Dummy Farmers from Haryana & Punjab...")
+        print("\n[Seed] Seeding 50 Dummy Farmers from Haryana & Punjab...")
         created_farmers = []
         used_phones = set()
 
         for i in range(50):
-            # Generate unique Indian mobile number (e.g. 98xxxxxxx)
             while True:
                 phone = f"{random.choice(['98', '97', '94', '99', '87', '70'])}{random.randint(10000000, 99999999)}"
                 if phone not in used_phones:
@@ -107,7 +106,7 @@ def seed_database():
                     break
 
             village_info = random.choice(PUNJAB_HARYANA_VILLAGES)
-            has_bank = random.random() < 0.85  # 85% farmers have linked bank account
+            has_bank = random.random() < 0.85
 
             bank_acc = f"30{random.randint(1000000000, 9999999999)}" if has_bank else None
             ifsc = random.choice(["SBIN0001234", "PUNB0123400", "HDFC0000456"]) if has_bank else None
@@ -129,9 +128,9 @@ def seed_database():
         for f in created_farmers:
             db.refresh(f)
 
-        print(f"  ✓ Successfully seeded 50 farmers!")
+        print("  + Successfully seeded 50 farmers!")
 
-        print("\n📦 Seeding Sample Live Bookings & Dynamic Queue Numbers...")
+        print("\n[Seed] Seeding Sample Live Bookings & Dynamic Queue Numbers...")
         today = date.today()
         created_bookings = []
 
@@ -158,8 +157,7 @@ def seed_database():
 
         db.commit()
 
-        print("\n💳 Seeding Payments for completed/in-progress Bookings...")
-        # MSP approximately Rs 2275 per quintal for wheat
+        print("\n[Seed] Seeding Payments for completed/in-progress Bookings...")
         MSP_PER_QUINTAL = 2275.0
         for b in created_bookings[:8]:
             db.refresh(b)
@@ -174,13 +172,13 @@ def seed_database():
             db.add(payment)
 
         db.commit()
-        print("  ✓ Successfully created sample bookings and payments!")
+        print("  + Successfully created sample bookings and payments!")
 
-        print("\n🎉 Database Seeding Completed Successfully!")
+        print("\n[Seed] Database Seeding Completed Successfully!")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Error while seeding database: {e}")
+        print(f"[Seed Error] Error while seeding database: {e}")
         raise
     finally:
         db.close()
