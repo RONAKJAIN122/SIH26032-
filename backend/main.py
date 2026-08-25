@@ -7,6 +7,7 @@ from database import engine, Base, get_db
 import models
 import schemas
 from routers.queue import router as queue_router
+from routers.bot import router as bot_router
 
 # Automatically create tables if they do not exist
 Base.metadata.create_all(bind=engine)
@@ -32,8 +33,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Queue & Booking Operations Router
+# Mount Routers
 app.include_router(queue_router)
+app.include_router(bot_router)
 
 
 # --- Root & Health Endpoints ---
