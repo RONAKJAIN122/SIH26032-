@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import engine, Base, get_db
 import models
 import schemas
+from routers.queue import router as queue_router
 
 # Automatically create tables if they do not exist
 Base.metadata.create_all(bind=engine)
@@ -30,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Queue & Booking Operations Router
+app.include_router(queue_router)
 
 
 # --- Root & Health Endpoints ---

@@ -1,5 +1,5 @@
 import random
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 from faker import Faker
 from database import SessionLocal, engine, Base
 from models import Center, Farmer, Booking, Payment, BookingStatus, PaymentStatus
@@ -139,8 +139,18 @@ def seed_database():
             farmer = random.choice(created_farmers)
             qty = round(random.uniform(40.0, 250.0), 1)
             crop = random.choice(CROP_TYPES)
-            booking_date = today + timedelta(days=random.randint(0, 2))
+            booking_date = today + timedelta(days=random.randint(0, 1))
             queue_no = i + 1
+            eta = datetime.combine(booking_date, time(8, 0)) + timedelta(minutes=(queue_no - 1) * 15)
+
+            selected_status = random.choice([
+                BookingStatus.CONFIRMED,
+                BookingStatus.CHECKED_IN,
+                BookingStatus.WEIGHING,
+                BookingStatus.COMPLETED
+            ])
+
+            duration = 14.5 if selected_status == BookingStatus.COMPLETED else None
 
             booking = Booking(
                 booking_reference=f"BK-{booking_date.strftime('%Y%m%d')}-{random.randint(1000, 9999)}",
@@ -150,7 +160,9 @@ def seed_database():
                 queue_number=queue_no,
                 crop_type=crop,
                 estimated_quantity_quintals=qty,
-                status=random.choice([BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.IN_PROGRESS])
+                status=selected_status,
+                estimated_arrival_time=eta,
+                processing_duration_minutes=duration
             )
             db.add(booking)
             created_bookings.append(booking)

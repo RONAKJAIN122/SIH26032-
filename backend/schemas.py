@@ -53,29 +53,104 @@ class FarmerResponse(FarmerBase):
 
 
 # -------------------------------------------------------------
-# Bookings Schemas
+# Bookings & Queue Management Schemas
 # -------------------------------------------------------------
-class BookingBase(BaseModel):
-    center_id: int = Field(..., example=1)
+class SlotBookingRequest(BaseModel):
     farmer_id: int = Field(..., example=1)
-    booking_date: date = Field(..., example="2026-08-26")
+    center_id: int = Field(..., example=1)
     crop_type: str = Field("Wheat", example="Wheat")
-    estimated_quantity_quintals: float = Field(..., gt=0, example=150.0)
+    estimated_quantity_quintals: float = Field(..., gt=0, example=120.0)
+    requested_date: date = Field(..., example="2026-08-26")
 
 
-class BookingCreate(BookingBase):
-    pass
-
-
-class BookingStatusUpdate(BaseModel):
-    status: BookingStatus = Field(..., example=BookingStatus.CHECKED_IN)
-
-
-class BookingResponse(BookingBase):
-    id: int
+class SlotBookingResponse(BaseModel):
+    booking_id: int
     booking_reference: str
     queue_number: int
     status: BookingStatus
+    booking_date: date
+    crop_type: str
+    estimated_quantity_quintals: float
+    estimated_arrival_time: Optional[datetime] = None
+    estimated_arrival_time_formatted: Optional[str] = None
+    center_name: str
+    center_district: str
+    farmer_name: str
+    farmer_phone: str
+    message: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StatusUpdateRequest(BaseModel):
+    status: BookingStatus = Field(..., example=BookingStatus.CHECKED_IN)
+
+
+class StatusUpdateResponse(BaseModel):
+    booking_id: int
+    booking_reference: str
+    old_status: BookingStatus
+    new_status: BookingStatus
+    processing_duration_minutes: Optional[float] = None
+    average_processing_time_minutes: float
+    recalculated_queue_count: int
+    message: str
+
+
+class LiveQueueItem(BaseModel):
+    booking_id: int
+    booking_reference: str
+    queue_number: int
+    status: BookingStatus
+    farmer_id: int
+    farmer_name: str
+    farmer_phone: str
+    crop_type: str
+    estimated_quantity_quintals: float
+    dynamic_eta: Optional[str] = None
+    farmers_ahead: int
+
+
+class CenterLiveQueueResponse(BaseModel):
+    center_id: int
+    center_name: str
+    date: date
+    daily_capacity_quintals: float
+    booked_capacity_quintals: float
+    active_in_queue_count: int
+    completed_today_count: int
+    average_processing_time_minutes: float
+    queue: List[LiveQueueItem]
+
+
+class ActiveFarmerBookingResponse(BaseModel):
+    booking_id: int
+    booking_reference: str
+    queue_number: int
+    status: BookingStatus
+    farmer_name: str
+    farmer_phone: str
+    center_name: str
+    center_district: str
+    booking_date: date
+    crop_type: str
+    estimated_quantity_quintals: float
+    dynamic_eta: str
+    farmers_ahead_in_queue: int
+    estimated_wait_minutes: float
+
+
+class BookingResponse(BaseModel):
+    id: int
+    booking_reference: str
+    center_id: int
+    farmer_id: int
+    booking_date: date
+    queue_number: int
+    crop_type: str
+    estimated_quantity_quintals: float
+    status: BookingStatus
+    estimated_arrival_time: Optional[datetime] = None
     created_at: datetime
     center: Optional[CenterResponse] = None
     farmer: Optional[FarmerResponse] = None
@@ -93,11 +168,6 @@ class PaymentBase(BaseModel):
 
 class PaymentCreate(PaymentBase):
     pass
-
-
-class PaymentStatusUpdate(BaseModel):
-    status: PaymentStatus = Field(..., example=PaymentStatus.SUCCESS)
-    transaction_ref: Optional[str] = Field(None, example="TXN-20260826-001")
 
 
 class PaymentResponse(PaymentBase):

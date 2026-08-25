@@ -19,7 +19,7 @@ class BookingStatus(str, enum.Enum):
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
     CHECKED_IN = "CHECKED_IN"
-    IN_PROGRESS = "IN_PROGRESS"
+    WEIGHING = "WEIGHING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
 
@@ -87,10 +87,15 @@ class Booking(Base):
     estimated_quantity_quintals = Column(Float, nullable=False)
     status = Column(
         SqlEnum(BookingStatus, name="booking_status_enum", create_type=False),
-        default=BookingStatus.PENDING,
+        default=BookingStatus.CONFIRMED,
         nullable=False,
         index=True
     )
+    estimated_arrival_time = Column(DateTime, nullable=True)
+    checked_in_at = Column(DateTime, nullable=True)
+    weighing_started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    processing_duration_minutes = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
