@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import BookingCard from "../components/BookingCard";
+import ProfileModal from "../components/ProfileModal";
 
 const API = "http://127.0.0.1:8000";
 const MSP = 2275.0;
@@ -8,6 +9,7 @@ export default function FarmerDashboard({ farmer, onBookSlot, onLogout }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active"); // "active" | "history"
+  const [showProfile, setShowProfile] = useState(false);
   const isFirstLoad = useRef(true);
 
   const fetchBookings = async (showSpinner = false) => {
@@ -50,11 +52,25 @@ export default function FarmerDashboard({ farmer, onBookSlot, onLogout }) {
           <span className="nav-logo-icon">🌾</span>
           <span className="nav-logo-text">SmartMandi</span>
         </div>
-        <button className="nav-farmer-chip" onClick={onLogout} title="Tap to logout">
+        <button
+          className="nav-farmer-chip"
+          onClick={() => setShowProfile(true)}
+          title="View Farmer Profile"
+        >
           <div className="nav-avatar">{initials}</div>
           {farmer.name.split(" ")[0]}
         </button>
       </div>
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <ProfileModal
+          farmer={farmer}
+          bookings={bookings}
+          onClose={() => setShowProfile(false)}
+          onLogout={onLogout}
+        />
+      )}
 
       {/* Greeting Hero */}
       <div style={{ marginBottom: "1.25rem" }}>
