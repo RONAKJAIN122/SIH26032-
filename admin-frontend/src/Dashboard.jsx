@@ -65,7 +65,7 @@ function QueueRow({ item, onStatusChange, isLoading }) {
 }
 
 export default function Dashboard() {
-  const [queueData, setQueueData] = useState(null);
+  const [queueMap, setQueueMap] = useState({});  // { [center_id]: payload }
   const [wsStatus, setWsStatus] = useState("Connecting...");
   const [loadingId, setLoadingId] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -102,7 +102,8 @@ export default function Dashboard() {
       try {
         const data = JSON.parse(event.data);
         if (data.event === "QUEUE_UPDATE") {
-          setQueueData(data);
+          // Store per center_id so tab switching works correctly
+          setQueueMap((prev) => ({ ...prev, [data.center_id]: data }));
           setLastUpdated(new Date());
         }
       } catch (e) {
@@ -148,13 +149,54 @@ export default function Dashboard() {
     }
   };
 
-  // Filter queue by selected center
-  const activeQueue = queueData
-    ? queueData.queue.filter((b) => {
-        if (!selectedCenter) return true;
-        return queueData.center_id === selectedCenter;
+  // When center tab changes, immediately REST-fetch that center's live queue
+  // (WS pushes only on status changes — this ensures instant tab switch data)
+  useEffect(() => {
+    if (!selectedCenter) return;
+    const today = new Date().toISOString().split("T")[0];
+    fetch(`${API_BASE}/api/centers/${selectedCenter}/live-queue?target_date=${today}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        // Convert live-queue response to the same QUEUE_UPDATE shape
+        const payload = {
+          event: "QUEUE_UPDATE",
+          center_id: data.center_id,
+          center_name: data.center_name,
+          date: String(data.date),
+          summary: {
+            daily_capacity_quintals: data.daily_capacity_quintals,
+            booked_capacity_quintals: data.booked_capacity_quintals,
+            active_in_queue: data.active_in_queue_count,
+            completed_today: data.completed_today_count,
+            cancelled_today: 0,
+            total_bookings: data.queue.length,
+          },
+          queue: data.queue.map((q) => ({
+            booking_id: q.booking_id,
+            booking_reference: q.booking_reference,
+            queue_number: q.queue_number,
+            farmer_id: q.farmer_id,
+            farmer_name: q.farmer_name,
+            farmer_phone: q.farmer_phone,
+            crop_type: q.crop_type,
+            estimated_quantity_quintals: q.estimated_quantity_quintals,
+            status: q.status,
+            dynamic_eta: q.dynamic_eta,
+            farmers_ahead: q.farmers_ahead,
+          })),
+        };
+        setQueueMap((prev) => ({ ...prev, [selectedCenter]: payload }));
+        setLastUpdated(new Date());
       })
-    : [];
+      .catch(() => {});
+  }, [selectedCenter]);
+
+  // Current center's data
+  const queueData = queueMap[selectedCenter] || null;
+
+  // Filter queue by selected center (now always correct since keyed by center_id)
+  const activeQueue = queueData ? queueData.queue : [];
 
   const summary = queueData?.summary || {};
 

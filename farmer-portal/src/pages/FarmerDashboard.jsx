@@ -1,32 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import BookingCard from "../components/BookingCard";
 
 const API = "http://127.0.0.1:8000";
 const MSP = 2275.0;
 
-const STATUS_ORDER = ["CONFIRMED", "CHECKED_IN", "WEIGHING", "COMPLETED", "CANCELLED"];
-
 export default function FarmerDashboard({ farmer, onBookSlot, onLogout }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("active"); // "active" | "history"
+  const isFirstLoad = useRef(true);
 
-  const fetchBookings = async () => {
-    setLoading(true);
+  const fetchBookings = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
       const res = await fetch(`${API}/api/farmers/${farmer.id}/bookings?limit=30`);
       if (res.ok) setBookings(await res.json());
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBookings();
-    // Poll every 15s for live status updates
-    const interval = setInterval(fetchBookings, 15000);
+    // First load: show spinner
+    fetchBookings(true).then(() => { isFirstLoad.current = false; });
+    // Subsequent polls: silent refresh (no spinner flash)
+    const interval = setInterval(() => fetchBookings(false), 15000);
     return () => clearInterval(interval);
   }, [farmer.id]);
 
